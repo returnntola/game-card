@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的游戏感想生成器 - 视觉增强版</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        :root { --primary: #ff85a2; --bg: #fff9fa; --item-bg: #fff0f3; --accent: #ffe5eb; }
+        .theme-sky { --primary: #70a1ff; --bg: #f8fbff; --item-bg: #eff5ff; --accent: #e1eaff; }
+        .theme-mint { --primary: #2ed573; --bg: #f7fdf9; --item-bg: #effbf2; --accent: #e1f7e7; }
+        .theme-lemon { --primary: #ffa502; --bg: #fffdf5; --item-bg: #fff9e6; --accent: #fff2cc; }
+        .theme-grape { --primary: #a55eea; --bg: #faf7ff; --item-bg: #f4eeff; --accent: #ece0ff; }
+        .theme-chocolate { --primary: #8d6e63; --bg: #fcfaf9; --item-bg: #f7f0ed; --accent: #efe5e1; }
+
+        /* 全局统一字体：圆润、加粗、禁止斜体[cite: 1] */
+        * { 
+            font-family: "PingFang SC", "Microsoft YaHei UI", sans-serif; 
+            font-weight: 600; 
+            font-style: normal !important; 
+        }
+        
+        body { background-color: #f0f2f5; display: flex; padding: 20px; gap: 20px; justify-content: center; }
+
+        .editor-side { width: 400px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-height: 95vh; overflow-y: auto; }
+        .section-label { display: block; font-size: 14px; margin-bottom: 8px; color: var(--primary); border-left: 4px solid var(--primary); padding-left: 8px; }
+        
+        .theme-picker, .pattern-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .option-btn { cursor: pointer; height: 32px; border-radius: 8px; font-size: 12px; border: 2px solid #eee; background: white; display: flex; align-items: center; justify-content: center; }
+        .option-btn.active { border-color: var(--primary); background: var(--item-bg); color: var(--primary); }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; margin-bottom: 5px; color: #666; }
+        .input-group input, .input-group select, .input-group textarea { width: 100%; padding: 10px; border: 2px solid #eee; border-radius: 12px; outline: none; box-sizing: border-box; font-size: 14px; }
+
+        /* 预览卡片区域[cite: 1] */
+        #capture-area { width: 460px; padding: 40px; border-radius: 40px; border: 6px double var(--primary); background-color: var(--bg); position: relative; }
+        .bg-pattern-grid { background-image: linear-gradient(var(--accent) 0.8px, transparent 0.8px), linear-gradient(90deg, var(--accent) 0.8px, transparent 0.8px); background-size: 25px 25px; }
+        .bg-pattern-dots { background-image: radial-gradient(var(--accent) 1.5px, transparent 1.5px); background-size: 20px 20px; }
+        .bg-pattern-lines { background: repeating-linear-gradient(45deg, transparent, transparent 12px, var(--accent) 12px, var(--accent) 13px); }
+
+        .card-header h1 { margin: 0 0 25px 0; font-size: 28px; color: var(--primary); text-align: center; }
+        
+        .info-bubble { background: white; border-radius: 18px; padding: 14px; margin-bottom: 12px; border: 2.5px solid var(--primary); box-shadow: 4px 4px 0 var(--item-bg); }
+        .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
+        .label-tag { font-size: 11px; background: var(--primary); color: white; padding: 2px 10px; border-radius: 10px; display: inline-block; margin-bottom: 4px; }
+        .info-val { font-size: 15px; color: #333; display: block; }
+        
+        .rating-row { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; }
+        .stars { color: #ffbc00; font-size: 28px; }
+
+        /* 感想与剧透预警区域[cite: 1] */
+        .thought-area { background: rgba(255,255,255,0.98); border-radius: 20px; padding: 22px; border: 2.5px dashed var(--primary); }
+        .thought-header { font-weight: bold; color: var(--primary); font-size: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
+        .thought-text { font-size: 15px; line-height: 1.8; color: #333; white-space: pre-wrap; }
+        
+        /* 剧透警告小图标与样式[cite: 1] */
+        .spoiler-alert { 
+            background: #fffde7; 
+            color: #d32f2f; 
+            font-size: 13px; 
+            text-align: center; 
+            padding: 8px; 
+            border-radius: 12px; 
+            margin-bottom: 12px; 
+            border: 1.5px solid #d32f2f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .save-btn { padding: 14px; border: none; border-radius: 50px; cursor: pointer; font-size: 14px; transition: 0.2s; color: white; background: var(--primary); box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        .save-btn:active { transform: translateY(2px); box-shadow: none; }
+        .full-btn { grid-column: span 2; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="editor-side">
+    <span class="section-label">🎨 样式定制</span>
+    <div class="theme-picker" id="theme-btns">
+        <button class="option-btn active" onclick="setTheme('', this)" style="background:#ff85a2; color:white">草莓粉</button>
+        <button class="option-btn" onclick="setTheme('theme-sky', this)" style="background:#70a1ff; color:white">晴空蓝</button>
+        <button class="option-btn" onclick="setTheme('theme-mint', this)" style="background:#2ed573; color:white">薄荷绿</button>
+        <button class="option-btn" onclick="setTheme('theme-lemon', this)" style="background:#ffa502; color:white">柠檬黄</button>
+        <button class="option-btn" onclick="setTheme('theme-grape', this)" style="background:#a55eea; color:white">葡萄紫</button>
+        <button class="option-btn" onclick="setTheme('theme-chocolate', this)" style="background:#8d6e63; color:white">可可咖</button>
+    </div>
+    <div class="pattern-picker">
+        <button class="option-btn active" onclick="setPattern('bg-pattern-none', this)">纯色</button>
+        <button class="option-btn" onclick="setPattern('bg-pattern-grid', this)">网格</button>
+        <button class="option-btn" onclick="setPattern('bg-pattern-dots', this)">波点</button>
+        <button class="option-btn" onclick="setPattern('bg-pattern-lines', this)">斜纹</button>
+    </div>
+
+    <div class="input-group"><label>游戏名称</label><input type="text" id="in-name" placeholder="输入游戏名" oninput="update()"></div>
+    
+    <div class="grid-info">
+        <div class="input-group"><label>通关时长</label><input type="text" id="in-time" placeholder="如 30h" oninput="update()"></div>
+        <div class="input-group">
+            <label>完成进度</label>
+            <select id="in-status" onchange="update()">
+                <option>全成就 / 100%</option>
+                <option>主线完结</option>
+                <option>仅回收HE</option>
+                <option>封盘纪念</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="input-group"><label>攻略顺序</label><input type="text" id="in-order" placeholder="如：A -> B -> C" oninput="update()"></div>
+    <div class="input-group"><label>最爱角色</label><input type="text" id="in-fav" placeholder="本命角色" oninput="update()"></div>
+    
+    <div class="input-group">
+        <label>综合评价</label>
+        <div style="display:flex; gap:10px">
+            <select id="in-rate" style="width:40%" onchange="update()">
+                <option value="5">★★★★★</option>
+                <option value="4.5">★★★★☆</option>
+                <option value="4">★★★★</option>
+                <option value="3">★★★</option>
+            </select>
+            <input type="text" id="in-reason" placeholder="一句话总结" oninput="update()">
+        </div>
+    </div>
+    
+    <div class="input-group"><label>详细感想内容</label><textarea id="in-text" rows="5" placeholder="写下你的游戏感想..." oninput="update()"></textarea></div>
+    
+    <span class="section-label">💾 导出模式</span>
+    <div class="btn-box">
+        <button class="save-btn full-btn" onclick="saveFull()">✨ 生成完整长图 ✨</button>
+        <button class="save-btn" onclick="savePart('main')">🖼️ 仅基础卡</button>
+        <button class="save-btn" onclick="savePart('thought')">📝 仅感想图</button>
+    </div>
+</div>
+
+<div class="preview-side">
+    <div id="capture-area" class="bg-pattern-none">
+        <div id="main-part">
+            <div class="card-header"><h1 id="out-name">游戏名称</h1></div>
+            <div class="grid-info">
+                <div class="info-bubble"><span class="label-tag">通关时长</span><span class="info-val" id="out-time">-</span></div>
+                <div class="info-bubble"><span class="label-tag">完成进度</span><span class="info-val" id="out-status">全成就 / 100%</span></div>
+            </div>
+            <div class="info-bubble"><span class="label-tag">攻略顺序</span><span class="info-val" id="out-order">-</span></div>
+            <div class="info-bubble"><span class="label-tag">最爱角色</span><span class="info-val" id="out-fav">-</span></div>
+            
+            <div class="rating-row">
+                <div><span class="label-tag">评价</span><div class="stars" id="out-rate">★★★★★</div></div>
+                <div style="text-align:right; max-width:210px;">
+                    <span class="info-val" style="font-size:12px; color:#666;" id="out-reason"></span>
+                </div>
+            </div>
+        </div>
+        <div id="thought-part">
+            <!-- 增加警告图标的剧透预警[cite: 1] -->
+            <div class="spoiler-alert">
+                <span>⚠️</span> 剧透预警：以下内容含有关键剧情揭示 <span>⚠️</span>
+            </div>
+            <div class="thought-area">
+                <div class="thought-header">📝 游戏感想</div>
+                <div class="thought-text" id="out-text">在这里写下你的感想吧...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTheme = '';
+    let currentPattern = 'bg-pattern-none';
+
+    function setTheme(t, b) { currentTheme = t; document.querySelectorAll('#theme-btns .option-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); apply(); }
+    function setPattern(p, b) { currentPattern = p; document.querySelectorAll('.pattern-picker .option-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); apply(); }
+    function apply() { document.getElementById('capture-area').className = currentPattern; document.body.className = currentTheme; update(); }
+
+    function update() {
+        document.getElementById('out-name').innerText = document.getElementById('in-name').value || '游戏名称';
+        document.getElementById('out-time').innerText = document.getElementById('in-time').value || '-';
+        document.getElementById('out-status').innerText = document.getElementById('in-status').value;
+        document.getElementById('out-order').innerText = document.getElementById('in-order').value || '-';
+        document.getElementById('out-fav').innerText = document.getElementById('in-fav').value || '-';
+        document.getElementById('out-reason').innerText = document.getElementById('in-reason').value;
+        document.getElementById('out-rate').innerText = document.getElementById('in-rate').selectedOptions[0].innerText;
+        document.getElementById('out-text').innerText = document.getElementById('in-text').value || '在这里写下你的感想吧...';
+    }
+
+    async function capture(el, name) {
+        const canvas = await html2canvas(el, { scale: 3, backgroundColor: null });
+        const link = document.createElement('a');
+        link.download = name + '.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+
+    function saveFull() { capture(document.getElementById('capture-area'), '游戏感想_完整图'); }
+    function savePart(m) {
+        const main = document.getElementById('main-part');
+        const thought = document.getElementById('thought-part');
+        if(m === 'main') {
+            thought.style.display = 'none';
+            capture(document.getElementById('capture-area'), '游戏基础资料').then(() => thought.style.display = 'block');
+        } else {
+            main.style.display = 'none';
+            capture(document.getElementById('capture-area'), '游戏详细感想').then(() => main.style.display = 'block');
+        }
+    }
+    update();
+</script>
+</body>
+</html>
